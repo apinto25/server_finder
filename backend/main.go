@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"regexp"
 	"sort"
@@ -53,9 +52,7 @@ func WebSearch(ctx *fasthttp.RequestCtx) {
 	}
 
 	paco := WebScraper(urlToSearch)
-	// fmt.Println("Paco antes del método", paco)
 	paco = calculateDiferences(paco, urlToSearch)
-	// fmt.Println("Paco después del método", paco)
 
 	jsonBody, err2 := json.Marshal(paco)
 
@@ -123,29 +120,22 @@ func WebScraper(urlToSearch string) *WebPage {
 
 	endpoints, _ := urlInfo["endpoints"].([]interface{})
 
-	for index, object := range endpoints {
+	for _, object := range endpoints {
 
 		myMap, _ := object.(map[string]interface{})
 		address, _ := myMap["ipAddress"].(string)
 		grade, _ := myMap["grade"].(string)
 		country, owner := whoisIP(myMap["ipAddress"].(string))
 
-		fmt.Println(index, address, grade, country, owner)
-
 		serverIndex := Server{
 			Address:  address,
 			SslGrade: grade,
 			Country:  country,
 			Owner:    owner}
-		fmt.Println("server", serverIndex)
 
 		serverItems = append(serverItems, serverIndex)
 		grades = append(grades, grade)
-		//grades = append(grades, grade)
 	}
-
-	fmt.Println("serverItems", serverItems)
-	fmt.Println("grades:", grades)
 
 	isDown := false
 	status := urlInfo["status"].(string)
@@ -156,17 +146,11 @@ func WebScraper(urlToSearch string) *WebPage {
 	title := getTitle(urlInfo["host"].(string))
 	logo := getLogo(urlInfo["host"].(string))
 
-	//endpoints := urlInfo["endpoints"].([]interface{})
-	//fmt.Println("endpoints", endpoints)
-
 	sort.Strings(grades)
 	totalGrade := "not found"
-	fmt.Println(len(grades), grades)
 	if len(grades) > 0 && grades[len(grades)-1] != "" {
 		totalGrade = grades[len(grades)-1]
 	}
-
-	fmt.Println("sslTotalGrade", totalGrade)
 
 	paco := &WebPage{
 		Servers: serverItems,
@@ -203,7 +187,6 @@ func calculateDiferences(urlInfo *WebPage, webUrl string) *WebPage {
 		panic(err)
 	}
 	actualServers := string(strServers)
-	fmt.Println(actualServers)
 
 	timestampNow := int(time.Now().Unix())
 
@@ -218,7 +201,6 @@ func calculateDiferences(urlInfo *WebPage, webUrl string) *WebPage {
 	if id != 0 {
 		if (timestampNow - timestamp) > 3600 {
 			urlInfo.PreviousSslGrade = sslGrade
-			fmt.Println("Ya pasó una hora", sslGrade, "el de urlinfo", urlInfo.SslGrade)
 
 			urlInfo.ServersChanged = (actualServers != actualendpoint)
 
@@ -234,7 +216,6 @@ func calculateDiferences(urlInfo *WebPage, webUrl string) *WebPage {
 			urlInfo.ServersChanged = (actualServers != previousendpoint)
 		}
 	} else {
-		fmt.Println("Vacio")
 		if _, err := db.Exec(
 			`INSERT INTO visitedWebsites (websiteurl, timestamp, previoussslgrade, sslgrade,  previousendpoint, actualendpoint)
 			VALUES ($1, $2, $3, $4, $5, $6) 
@@ -242,7 +223,6 @@ func calculateDiferences(urlInfo *WebPage, webUrl string) *WebPage {
 			log.Fatal(err)
 		}
 	}
-	fmt.Printf("%v %v %v\n", id, web, timestamp)
 	return urlInfo
 }
 
@@ -252,7 +232,6 @@ func getTitle(url string) string {
 	c := colly.NewCollector()
 	c.OnHTML("head", func(e *colly.HTMLElement) {
 		title = e.ChildText("title")
-		fmt.Printf("Title found: %q\n", title)
 	})
 	c.Visit(url)
 
@@ -273,7 +252,6 @@ func getLogo(url string) string {
 			if strings.EqualFold(property, "shortcut icon") {
 				result, _ := s.Attr("href")
 				logo = result
-				fmt.Printf("Link found: %q", logo)
 			}
 		})
 	})
