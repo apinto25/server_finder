@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	_ "github.com/lib/pq"
 
@@ -38,7 +39,7 @@ type (
 	}
 
 	VisitedURLs struct {
-		Items []string `json:items`
+		Items []string `json:"items"`
 	}
 )
 
@@ -51,8 +52,10 @@ func WebSearch(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	addWebsiteDB(urlToSearch)
 	paco := WebScraper(urlToSearch)
+	// fmt.Println("Paco antes del método", paco)
+	paco = calculateDiferences(paco, urlToSearch)
+	// fmt.Println("Paco después del método", paco)
 
 	jsonBody, err2 := json.Marshal(paco)
 
@@ -81,7 +84,6 @@ func GetWebsites(ctx *fasthttp.RequestCtx) {
 	defer rows.Close()
 
 	var urls []string // Create an empty nil slice
-	// urls = append(urls, "name") // Appends "name" to the slice, creating a new slice if required
 
 	for rows.Next() {
 		var web string
@@ -90,7 +92,6 @@ func GetWebsites(ctx *fasthttp.RequestCtx) {
 		}
 		urls = append(urls, web) // Appends "name" to the slice, creating a new slice if required
 	}
-	// fmt.Println(urls)
 
 	paco := &VisitedURLs{
 		Items: urls}
@@ -179,17 +180,70 @@ func WebScraper(urlToSearch string) *WebPage {
 	return paco
 }
 
-func addWebsiteDB(urlToSearch string) {
+func calculateDiferences(urlInfo *WebPage, webUrl string) *WebPage {
 
 	db, err := sql.Open("postgres", "postgresql://maxroach@localhost:26257/websites?sslmode=disable")
 	if err != nil {
 		log.Fatal("error connecting to the database: ", err)
 	}
 
-	if _, err := db.Exec(
-		"INSERT INTO visitedWebsites (websiteURL) VALUES ($1) ON CONFLICT DO NOTHING", urlToSearch); err != nil {
+	rows, err := db.Query(
+		`SELECT * FROM visitedWebsites
+		WHERE websiteurl = $1`, webUrl)
+	if err != nil {
 		log.Fatal(err)
 	}
+	defer rows.Close()
+
+	var id, timestamp int
+	var web, sslGrade, prevSslGrade, previousendpoint, actualendpoint string
+
+	strServers, err := json.Marshal(urlInfo.Servers)
+	if err != nil {
+		panic(err)
+	}
+	actualServers := string(strServers)
+	fmt.Println(actualServers)
+
+	timestampNow := int(time.Now().Unix())
+
+	for rows.Next() {
+		if err := rows.Scan(&id, &web, &timestamp, &prevSslGrade, &sslGrade, &previousendpoint, &actualendpoint); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	urlInfo.ServersChanged = false
+
+	if id != 0 {
+		if (timestampNow - timestamp) > 3600 {
+			urlInfo.PreviousSslGrade = sslGrade
+			fmt.Println("Ya pasó una hora", sslGrade, "el de urlinfo", urlInfo.SslGrade)
+
+			urlInfo.ServersChanged = (actualServers != actualendpoint)
+
+			if _, err := db.Exec(
+				`UPDATE visitedWebsites 
+				SET (timestamp, previoussslgrade, sslgrade, previousendpoint, actualendpoint) = ($1, $2, $3, $4, $5)
+				WHERE websiteurl = $6`, timestampNow, urlInfo.PreviousSslGrade, urlInfo.SslGrade, actualendpoint, actualServers, web); err != nil {
+				log.Fatal(err)
+			}
+
+		} else {
+			urlInfo.PreviousSslGrade = prevSslGrade
+			urlInfo.ServersChanged = (actualServers != previousendpoint)
+		}
+	} else {
+		fmt.Println("Vacio")
+		if _, err := db.Exec(
+			`INSERT INTO visitedWebsites (websiteurl, timestamp, previoussslgrade, sslgrade,  previousendpoint, actualendpoint)
+			VALUES ($1, $2, $3, $4, $5, $6) 
+			ON CONFLICT DO NOTHING`, web, timestampNow, urlInfo.SslGrade, urlInfo.SslGrade, actualServers, actualServers); err != nil {
+			log.Fatal(err)
+		}
+	}
+	fmt.Printf("%v %v %v\n", id, web, timestamp)
+	return urlInfo
 }
 
 func getTitle(url string) string {
