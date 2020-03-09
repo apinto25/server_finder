@@ -2,7 +2,8 @@
 In this project a service was created to obtain information about a server (given its url) and to know if the configurations have changed.
 
 ## Backend using Go
-The backend was made using Go language. An API with tow endpoints was created. The first one receives a domain name and returns a json with the following information:
+The backend was made using Go language. An API with two endpoints was created. 
+The first one is a GET method "/websearch?webURL=" and receives a domain name as query param and returns a json with the following information:
 
  - servers: array of the servers associated to the domain. Each server has:
      - address: IP of the host server.
@@ -16,7 +17,7 @@ The backend was made using Go language. An API with tow endpoints was created. T
  - title: website title obtained from the <head> tag of the HTML.
  - is_down​: true if the server is down and the information can't be obtained.
 
-The second endpoint returns a json with the list the servers that have been searched using the first endpoint. 
+The second endpoint is a GET method "/visited" returns a json with the list the servers that have been searched using the first endpoint. 
 
 Usage:
 
@@ -54,7 +55,7 @@ The columns of the database are listed as follows:
  - previousendpoint is the actual state of the server.
 
 ## Frontend using Vue
-Web interface that allows the user to enter the name of a domain and display in a text the json returned by the first endpoint of the service in go by pressing the button *Search*. It also allows the user to see a text with a json taht lists the domains that have been searched by pressing the button *History*.
+Web interface that allows the user to enter the name of a domain and display in a text the json returned by the first endpoint of the service in go by pressing the button *Search*. It also allows the user to see a text with a json that lists the domains that have been searched by pressing the button *History*.
 
 <div align="center">
 <img src="./public/finder.png">

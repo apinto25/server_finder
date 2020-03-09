@@ -57,10 +57,10 @@ func WebSearch(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	paco := WebScraper(urlToSearch)
-	paco = calculateDiferences(paco, urlToSearch)
+	result := WebScraper(urlToSearch)
+	result = calculateDiferences(result, urlToSearch)
 
-	jsonBody, err2 := json.Marshal(paco)
+	jsonBody, err2 := json.Marshal(result)
 
 	if err2 != nil {
 		ctx.Error(" json marshal fail", 500)
@@ -101,10 +101,10 @@ func GetWebsites(ctx *fasthttp.RequestCtx) {
 		urls = append(urls, web)
 	}
 
-	paco := &VisitedURLs{
+	visitedUrls := &VisitedURLs{
 		Items: urls}
 
-	jsonBody, err2 := json.Marshal(paco)
+	jsonBody, err2 := json.Marshal(visitedUrls)
 
 	if err2 != nil {
 		ctx.Error(" json marshal fail", 500)
@@ -167,7 +167,7 @@ func WebScraper(urlToSearch string) *WebPage {
 		totalGrade = grades[len(grades)-1]
 	}
 
-	paco := &WebPage{
+	result := &WebPage{
 		Servers: serverItems,
 		//	ServersChanged:   false,
 		SslGrade: totalGrade,
@@ -176,7 +176,7 @@ func WebScraper(urlToSearch string) *WebPage {
 		Title:  title,
 		IsDown: isDown}
 
-	return paco
+	return result
 }
 
 // calculatesDifferences receives the urlInfo (WebPage struct) and the webUrl.
@@ -242,7 +242,7 @@ func calculateDiferences(urlInfo *WebPage, webUrl string) *WebPage {
 		if _, err := db.Exec(
 			`INSERT INTO visitedWebsites (websiteurl, timestamp, previoussslgrade, sslgrade,  previousendpoint, actualendpoint)
 			VALUES ($1, $2, $3, $4, $5, $6) 
-			ON CONFLICT DO NOTHING`, web, timestampNow, urlInfo.SslGrade, urlInfo.SslGrade, actualServers, actualServers); err != nil {
+			ON CONFLICT DO NOTHING`, webUrl, timestampNow, urlInfo.SslGrade, urlInfo.SslGrade, actualServers, actualServers); err != nil {
 			log.Fatal(err)
 		}
 	}

@@ -13,11 +13,87 @@
           >Search</b-button
         >
       </div>
-      <div v-if="mode === 'searchResult'" style="word-break: break-all">
-        {{ JSON.stringify(searchResult) }}
+      <div v-if="loading">
+        <b-spinner label="Loading..." class="mt-2"></b-spinner>
       </div>
-      <div v-if="mode === 'getHistory'" style="word-break: break-all">
-        {{ JSON.stringify(getHistory) }}
+      <div
+        v-if="mode === 'searchResult' && !loading"
+        style="word-break: break-all"
+        class="mt-3 mb-5"
+      >
+        <b-card
+          style="text-align: left"
+          header="Primary"
+          header-bg-variant="primary"
+          header-text-variant="white"
+        >
+          <template v-slot:header>
+            <div class="w-100 d-flex justify-content-between">
+              <div>
+                <strong>{{ searchResult.webUrl }}</strong>
+              </div>
+              <div>
+                {{ searchResult.is_down ? "Server down" : "Server active" }}
+              </div>
+            </div>
+          </template>
+          <div><strong>Title: </strong>{{ searchResult.title }}</div>
+          <div><strong>Logo path: </strong>{{ searchResult.logo }}</div>
+          <hr role="separator" aria-orientation="horizontal" />
+          <div><strong>SSL grade: </strong>{{ searchResult.ssl_grade }}</div>
+          <div>
+            <strong>Previous SSL grade: </strong
+            >{{ searchResult.previous_ssl_grade }}
+          </div>
+          <div>
+            <strong>Servers have changed: </strong
+            >{{ searchResult.servers_changed ? "Yes" : "No" }}
+          </div>
+
+          <div class="mt-2 mb-1"><strong>Servers:</strong></div>
+          <b-card
+            class="mt-2"
+            v-for="server in searchResult.servers"
+            :key="server.address"
+            style="text-align: left"
+            border-variant="primary"
+          >
+            <div class="w-100 d-flex justify-content-between">
+              <div class="w-50">
+                <strong>IP address: </strong>{{ server.address }}
+              </div>
+              <div class="w-50">
+                <strong>Country: </strong>{{ server.country }}
+              </div>
+            </div>
+            <div class="w-100 d-flex justify-content-between">
+              <div class="w-50">
+                <strong>SSL grade: </strong>{{ server.ssl_grade }}
+              </div>
+              <div class="w-50">
+                <strong>Owner: </strong>{{ server.owner }}
+              </div>
+            </div>
+          </b-card>
+        </b-card>
+      </div>
+      <div
+        v-if="mode === 'getHistory' && !loading"
+        style="word-break: break-all"
+        class="mt-3 mb-5"
+      >
+        <b-list-group>
+          <b-list-group-item variant="info">
+            <strong>Search History</strong>
+          </b-list-group-item>
+          <b-list-group-item
+            v-for="item in getHistory.items"
+            :key="item"
+            style="text-align: left"
+          >
+            {{ item }}
+          </b-list-group-item>
+        </b-list-group>
       </div>
     </div>
   </div>
@@ -32,7 +108,8 @@ export default {
       webUrl: "",
       searchResult: null,
       getHistory: null,
-      mode: ""
+      mode: "",
+      loading: false
     };
   },
   methods: {
@@ -40,18 +117,22 @@ export default {
       if (!this.webUrl) {
         return;
       }
+      this.loading = true;
       const response = await fetch(
-        `http://192.168.0.19:8090/WebSearch?webURL=${this.webUrl}`
+        `http://192.168.1.13:8090/WebSearch?webURL=${this.webUrl}`
       );
       const json = await response.json();
-      this.searchResult = json;
+      this.searchResult = { ...json, webUrl: this.webUrl };
       this.mode = "searchResult";
+      this.loading = false;
     },
     handleGetHistory: async function() {
-      const response = await fetch(`http://192.168.0.19:8090/visited`);
+      this.loading = true;
+      const response = await fetch(`http://192.168.1.13:8090/visited`);
       const json = await response.json();
       this.getHistory = json;
       this.mode = "getHistory";
+      this.loading = false;
     }
   }
 };
