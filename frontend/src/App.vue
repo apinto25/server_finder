@@ -119,7 +119,7 @@ export default {
       }
       this.loading = true;
       const response = await fetch(
-        `http://192.168.1.13:8090/WebSearch?webURL=${this.webUrl}`
+        `http://localhost:8090/WebSearch?webURL=${this.webUrl}`
       );
       const json = await response.json();
       this.searchResult = { ...json, webUrl: this.webUrl };
@@ -128,7 +128,7 @@ export default {
     },
     handleGetHistory: async function() {
       this.loading = true;
-      const response = await fetch(`http://192.168.1.13:8090/visited`);
+      const response = await fetch(`http://localhost:8090/visited`);
       const json = await response.json();
       this.getHistory = json;
       this.mode = "getHistory";
